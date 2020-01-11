@@ -7,10 +7,13 @@ import Net from 'net'
 import Os from 'os'
 
 import MusicMode from './MusicMode'
+import EventHandler from '../EventHandler.js'
 
-class YeelightController {
+class YeelightController extends EventHandler {
 
   constructor () {
+    super();
+
     this.lights = [];
     this.currentDominant = null;
     this.lastUpdate = new Date().getTime();
@@ -42,12 +45,17 @@ class YeelightController {
           light.musicMode = new MusicMode(socket);
           socket.on('close', hadError => {
             light.musicMode = null;
+            console.log('Closed', hadError);
+            if (hadError) this._connectLightToServer(light);
           });
+
+          socket.on('error', err => {
+            console.error(err);
+          });
+          this._trigger('music-mode-started', light);
         }
         else {
-          console.warn('Unknown light attempted to connect to server');
-          console.log(address);
-          console.log(this.lights[0].host);
+          console.warn('Unknown light attempted to connect to server', address, this.lights[0].host);
         }
       });
 
@@ -92,11 +100,43 @@ class YeelightController {
     return host;
   };
 
-  _connectLightToServer (light) {
-    let host = this.findIpInNetwork(light.host);
+  async _connectLightToServer (light) {
+    let timeouts = [3000, 3000, 5000, 10000, 10000, 20000];
+    let maxTimeout = 60000;
 
-    light.sendCommand("set_music", [1, host, this.port]).catch(e => {
-      console.error(e);
+    while (!light.musicMode) {
+      console.log('Requesting music');
+      try {
+        let host = this.findIpInNetwork(light.host);
+        light.sendCommand("set_music", [1, host, this.port]).catch(e => {
+          console.error(e);
+        });
+      } catch(e) {
+        console.warn(e);
+      }
+
+      // Wait for connection or timeout
+      await new Promise((resolve, reject) => {
+        let offAndResolve = () => {
+          this.off('music-mode-started', handler);
+          resolve();
+        };
+        let handler = connectedLight => {
+          if (connectedLight == light) offAndResolve();
+        };
+
+        this.on('music-mode-started', handler);
+        this._wait(timeouts.shift() || maxTimeout).then(offAndResolve);
+      });
+    }
+    console.log('Connected to music!');
+  }
+
+  _wait(time) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        resolve();
+      }, time);
     });
   }
 
