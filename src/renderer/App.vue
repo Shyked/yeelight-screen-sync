@@ -12,7 +12,7 @@
   import ImageAnalyzer from './ImageAnalyzer'
 
   export default {
-    name: 'electron-led-vue',
+    name: 'yeelight-screen-sync',
     data() {
       return {
         color: "#ffffff",
