@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <main-interface :color="color"></main-interface>
+    <main-interface :color="color" :lights="lights"></main-interface>
   </div>
 </template>
 
@@ -16,7 +16,7 @@
     data() {
       return {
         color: "#ffffff",
-        lights: []
+        lights: {}
       }
     },
     components: {
@@ -24,8 +24,17 @@
     },
     created() {
 
-      ipcRenderer.on('new-light', (event, light) => {
-        console.log(light);
+      ipcRenderer.on('update-light', (event, light) => {
+        console.log('update');
+        if (!this.lights[light.id]) this.lights[light.id] = light;
+        else {
+          let existingObject = this.lights[light.id];
+          for (let id in existingObject) {
+            if (existingObject.hasOwnProperty(id)) {
+              existingObject[id] = light[id];
+            }
+          }
+        }
       });
 
       let desktopCapturer = new DesktopCapturer();
@@ -56,9 +65,15 @@
 </script>
 
 <style>
+  @import url('~@/assets/fontawesome/css/fontawesome.min.css');
+  @import url('~@/assets/fontawesome/css/duotone.min.css');
+  @import url('~@/assets/fontawesome/css/brands.min.css');
+
   html, body {
-    padding: 0;
+    padding: 10px;
     margin: 0;
     background-color: #222;
+    color: white;
+    font-family: sans-serif;
   }
 </style>

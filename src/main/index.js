@@ -26,6 +26,8 @@ function createWindow () {
     webPreferences: {nodeIntegration: true}
   })
 
+  mainWindow.setMenu(null);
+
   if (process.env.NODE_ENV === "development") {
     mainWindow.webContents.on("did-frame-finish-load", () => {
       mainWindow.webContents.once("devtools-opened", () => {
@@ -65,7 +67,7 @@ ipcMain.on('vue-ready', () => {
   });
 
   let proxys = [
-    'new-light'
+    'update-light'
   ];
 
   proxys.forEach(eventName => {

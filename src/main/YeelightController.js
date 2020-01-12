@@ -40,6 +40,7 @@ class YeelightController extends EventHandler {
           socket.on('close', hadError => {
             light.musicMode = null;
             console.log('Closed', hadError);
+            this._sendLightUpdate(light);
             if (hadError) this._connectLightToServer(light);
           });
 
@@ -123,6 +124,7 @@ class YeelightController extends EventHandler {
         this._wait(timeouts.shift() || maxTimeout).then(offAndResolve);
       });
     }
+    this._sendLightUpdate(light);
     console.log('Connected to music!');
   }
 
@@ -156,12 +158,17 @@ class YeelightController extends EventHandler {
   addLight (light) {
     this.lights.push(light);
     console.log("New yeelight detected: id=" + light.id + " name=" + light.name);
-    this._trigger('new-light', {
+    this._sendLightUpdate(light);
+    this._connectLightToServer(light);
+  }
+
+  _sendLightUpdate(light) {
+    this._trigger('update-light', {
       id: light.id,
       name: light.name,
-      host: light.host
+      host: light.host,
+      musicEnabled: !!light.musicMode
     });
-    this._connectLightToServer(light);
   }
 
   findLightWithHost (host) {
