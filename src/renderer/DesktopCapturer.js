@@ -12,10 +12,6 @@ class DesktopCapturer extends EventHandler {
 
   constructor () {
     super();
-    this._captureDesktopVideo().then(stream => {
-      this._stream = stream;
-      this._projectStreamInVideoTag(this._stream);
-    });
     this._video = document.createElement('video');
     this._canvas = document.createElement('canvas');
     this._frame = new Frame(this._canvas, {

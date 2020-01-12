@@ -1,65 +1,76 @@
-'use strict'
-
 import { app, BrowserWindow, ipcMain } from 'electron'
-import * as path from 'path'
-import { format as formatUrl } from 'url'
 
 import YeelightController from './YeelightController'
 
-const isDevelopment = process.env.NODE_ENV !== 'production'
-
-// global reference to mainWindow (necessary to prevent window from being garbage collected)
-let mainWindow
-
-function createMainWindow() {
-  const window = new BrowserWindow({webPreferences: {nodeIntegration: true}})
-
-  if (isDevelopment) {
-    window.webContents.openDevTools()
-  }
-
-  if (isDevelopment) {
-    window.loadURL(`http://localhost:${process.env.ELECTRON_WEBPACK_WDS_PORT}`)
-  }
-  else {
-    window.loadURL(formatUrl({
-      pathname: path.join(__dirname, 'index.html'),
-      protocol: 'file',
-      slashes: true
-    }))
-  }
-
-  window.on('closed', () => {
-    mainWindow = null
-  })
-
-  window.webContents.on('devtools-opened', () => {
-    window.focus()
-    setImmediate(() => {
-      window.focus()
-    })
-  })
-
-  return window
+/**
+ * Set `__static` path to static files in production
+ * https://simulatedgreg.gitbooks.io/electron-vue/content/en/using-static-assets.html
+ */
+if (process.env.NODE_ENV !== 'development') {
+  global.__static = require('path').join(__dirname, '/static').replace(/\\/g, '\\\\')
 }
 
-// quit application when all windows are closed
+let mainWindow
+const winURL = process.env.NODE_ENV === 'development'
+  ? `http://localhost:9080`
+  : `file://${__dirname}/index.html`
+
+function createWindow () {
+  /**
+   * Initial window options
+   */
+  mainWindow = new BrowserWindow({
+    height: 563,
+    useContentSize: true,
+    width: 1000,
+    webPreferences: {nodeIntegration: true}
+  })
+
+  if (process.env.NODE_ENV === "development") {
+    mainWindow.webContents.on("did-frame-finish-load", () => {
+      mainWindow.webContents.once("devtools-opened", () => {
+        mainWindow.focus();
+      });
+      mainWindow.webContents.openDevTools();
+    });
+  }
+
+  mainWindow.loadURL(winURL)
+
+  mainWindow.on('closed', () => {
+    mainWindow = null
+  })
+}
+
+app.on('ready', createWindow)
+
 app.on('window-all-closed', () => {
-  // on macOS it is common for applications to stay open until the user explicitly quits
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
 
 app.on('activate', () => {
-  // on macOS it is common to re-create a window even after all windows have been closed
   if (mainWindow === null) {
-    mainWindow = createMainWindow()
+    createWindow()
   }
 })
 
-// create main BrowserWindow when electron is ready
-app.on('ready', () => {
-  mainWindow = createMainWindow();
+ipcMain.on('vue-ready', () => {
+  console.log("ready");
   let yeelightController = new YeelightController();
+
+  ipcMain.on('dominant-color', (event, dominant) => {
+    yeelightController.handleColor(dominant);
+  });
+
+  let proxys = [
+    'new-light'
+  ];
+
+  proxys.forEach(eventName => {
+    yeelightController.on(eventName, function() {
+      mainWindow.webContents.send.apply(mainWindow.webContents, [eventName].concat(Array.from(arguments)));
+    });
+  });
 });

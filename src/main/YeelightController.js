@@ -1,5 +1,5 @@
 
-import { ipcMain as IpcMain } from 'electron'
+// import { ipcMain as IpcMain } from 'electron'
 import { Lookup } from 'node-yeelight-wifi'
 import Ip from 'ip'
 import FindFreePort from 'find-free-port'
@@ -14,6 +14,8 @@ class YeelightController extends EventHandler {
   constructor () {
     super();
 
+    console.log('Loading yeelight controller');
+
     this.lights = [];
     this.currentDominant = null;
     this.lastUpdate = new Date().getTime();
@@ -21,18 +23,10 @@ class YeelightController extends EventHandler {
     this.server = null;
     this.port = null;
 
-    this._initEvents();
-
     this._startServer().then(() => {
       this.lookup();
     }).catch(err => {
       console.error(err);
-    });
-  }
-
-  _initEvents () {
-    IpcMain.on('dominant-color', (event, dominant) => {
-      this._handleColor(dominant);
     });
   }
 
@@ -162,6 +156,11 @@ class YeelightController extends EventHandler {
   addLight (light) {
     this.lights.push(light);
     console.log("New yeelight detected: id=" + light.id + " name=" + light.name);
+    this._trigger('new-light', {
+      id: light.id,
+      name: light.name,
+      host: light.host
+    });
     this._connectLightToServer(light);
   }
 
@@ -169,7 +168,7 @@ class YeelightController extends EventHandler {
     return this.lights.find(light => light.host == host);
   }
 
-  _handleColor (dominant) {
+  handleColor (dominant) {
     let diff = null;
     if (this.currentDominant) {
       diff =  Math.abs(dominant.color[0] - this.currentDominant.color[0])
