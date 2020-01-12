@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="color" :style="{ borderColor: color }"></div>
+    <div class="color" :style="{ backgroundColor: color }"></div>
   </div>
 </template>
 
@@ -25,12 +25,11 @@
 
 <style scoped lang="scss">
   .color {
-    position: absolute;
-    width: calc(100% - 10px);
-    height: calc(100% - 10px);
-    top: 5px;
-    left: 5px;
-    border: 2px white solid;
+    position: relative;
+    width: 100%;
+    height: 8px;
+    background-color: white;
     box-sizing: border-box;
+    pointer-events: none;
   }
 </style>

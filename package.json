@@ -52,6 +52,7 @@
   },
   "dependencies": {
     "canvas-to-buffer": "^1.1.0",
+    "electron-store": "^5.1.0",
     "find-free-port": "^2.0.0",
     "ip": "^1.1.5",
     "jimp": "^0.9.3",
@@ -75,7 +76,7 @@
     "css-loader": "^0.28.11",
     "del": "^3.0.0",
     "devtron": "^1.4.0",
-    "electron": "^5.0.6",
+    "electron": "^7.1.8",
     "electron-debug": "^1.5.0",
     "electron-devtools-installer": "^2.2.4",
     "electron-builder": "^20.19.2",

@@ -5,6 +5,7 @@ import Ip from 'ip'
 import FindFreePort from 'find-free-port'
 import Net from 'net'
 import Os from 'os'
+import ElectronStore from 'electron-store'
 
 import MusicMode from './MusicMode'
 import EventHandler from '../EventHandler.js'
@@ -39,6 +40,7 @@ class YeelightController extends EventHandler {
           light.musicMode = new MusicMode(socket);
           socket.on('close', hadError => {
             light.musicMode = null;
+            light.hadError = hadError;
             console.log('Closed', hadError);
             this._sendLightUpdate(light);
             if (hadError) this._connectLightToServer(light);
@@ -124,6 +126,7 @@ class YeelightController extends EventHandler {
         this._wait(timeouts.shift() || maxTimeout).then(offAndResolve);
       });
     }
+    light.hadError = false;
     this._sendLightUpdate(light);
     console.log('Connected to music!');
   }
@@ -167,12 +170,23 @@ class YeelightController extends EventHandler {
       id: light.id,
       name: light.name,
       host: light.host,
-      musicEnabled: !!light.musicMode
+      musicEnabled: !!light.musicMode,
+      hadError: !!light.hadError
+    });
+  }
+
+  requestUpdate() {
+    this.lights.forEach(light => {
+      this._sendLightUpdate(light);
     });
   }
 
   findLightWithHost (host) {
     return this.lights.find(light => light.host == host);
+  }
+
+  findLightWithId (id) {
+    return this.lights.find(light => light.id == id);
   }
 
   handleColor (dominant) {

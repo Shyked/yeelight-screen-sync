@@ -1,8 +1,9 @@
 <template>
-  <div id="wrapper">
+  <div id="interface">
     <!-- <img id="logo" src="~@/assets/logo.png" alt="electron-vue"> -->
-    <color :color="color"></color>
-    <light v-for="light in lights" :key="light.id" :light="light"></light>
+    <div class="lights-list">
+      <light v-for="light in lights" :key="light.id" :light="light" :color="color"></light>
+    </div>
   </div>
 </template>
 
@@ -23,7 +24,7 @@
       },
       lights: {
         required: true,
-        type: Object
+        type: Array
       }
     },
     methods: {
@@ -32,5 +33,14 @@
 </script>
 
 <style>
+  #interface {
+    position: relative;
+    width: 100%;
+  }
 
+  .lights-list {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
 </style>

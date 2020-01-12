@@ -1,11 +1,17 @@
 <template>
-  <div id="app">
-    <main-interface :color="color" :lights="lights"></main-interface>
+  <div id="window">
+    <title-bar></title-bar>
+    <div id="app">
+      <main-interface :color="color" :lights="lights"></main-interface>
+    </div>
+    <color :color="color"></color>
   </div>
 </template>
 
 <script>
   import MainInterface from '@/components/MainInterface'
+  import TitleBar from '@/components/TitleBar'
+  import Color from '@/components/Color'
 
   import { ipcRenderer } from 'electron'
   import DesktopCapturer from './DesktopCapturer'
@@ -16,24 +22,31 @@
     data() {
       return {
         color: "#ffffff",
-        lights: {}
+        lights: [],
+        imagePing: 0
       }
     },
     components: {
-      MainInterface
+      MainInterface,
+      TitleBar,
+      Color
     },
     created() {
 
       ipcRenderer.on('update-light', (event, light) => {
-        console.log('update');
-        if (!this.lights[light.id]) this.lights[light.id] = light;
+        if (!this.lights) {
+          this.$set(this, 'lights', [ light ]);
+        }
         else {
-          let existingObject = this.lights[light.id];
-          for (let id in existingObject) {
-            if (existingObject.hasOwnProperty(id)) {
-              existingObject[id] = light[id];
+          let existingLight = this.lights.find(existingLight => existingLight.id == light.id);
+          if (existingLight) {
+            for (let id in existingLight) {
+              if (existingLight.hasOwnProperty(id)) {
+                if (id != 'name') existingLight[id] = light[id];
+              }
             }
           }
+          else this.lights.push(light);
         }
       });
 
@@ -42,21 +55,16 @@
       desktopCapturer.when('ready').then(() => {
         let imageAnalyzer = new ImageAnalyzer();
 
-        // let colorDiv = document.createElement('div');
-        // colorDiv.style = "width: 50px; height: 50px;";
-        // document.getElementById('app').appendChild(colorDiv);
-
         setInterval(() => {
           let t1 = new Date().getTime();
           let imageBuffer = desktopCapturer.capture();
           imageAnalyzer.analyze(imageBuffer).then(dominant => {
             ipcRenderer.send('dominant-color', dominant);
             let t2 = new Date().getTime();
-            // colorDiv.innerHTML = t2 - t1;
-            // colorDiv.style.backgroundColor = `rgb(${dominant.color[0]}, ${dominant.color[1]}, ${dominant.color[2]})`;
+            this.imagePing = t2 - t1;
             this.color = `rgb(${dominant.color[0]}, ${dominant.color[1]}, ${dominant.color[2]})`;
           });
-        }, 100);
+        }, 50);
       });
 
       ipcRenderer.send('vue-ready');
@@ -64,16 +72,33 @@
   }
 </script>
 
-<style>
+<style lang="scss">
   @import url('~@/assets/fontawesome/css/fontawesome.min.css');
   @import url('~@/assets/fontawesome/css/duotone.min.css');
   @import url('~@/assets/fontawesome/css/brands.min.css');
+  @import url('~@/assets/fontawesome/css/regular.min.css');
+  @import url('~@/assets/fonts/FiraSans/FiraSans.css');
 
   html, body {
-    padding: 10px;
+    width: 100%;
+    height: 100%;
     margin: 0;
-    background-color: #222;
     color: white;
-    font-family: sans-serif;
+    font-family: 'Fira Sans', sans-serif;
+  }
+
+  #window {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+  }
+
+  #app {
+    flex-grow: 1;
+    position: relative;
+    padding: 10px;
+    background-color: #222;
+    overflow: auto;
   }
 </style>
