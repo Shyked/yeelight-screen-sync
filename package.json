@@ -1,6 +1,6 @@
 {
   "name": "yeelight-screen-sync",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Rémy / Shyked <remy.shyked@gmail.com>",
   "description": "An electron-vue project",
   "license": null,
@@ -51,6 +51,7 @@
     }
   },
   "dependencies": {
+    "babel-runtime": "^6.26.0",
     "canvas-to-buffer": "^1.1.0",
     "electron-store": "^5.1.0",
     "find-free-port": "^2.0.0",
