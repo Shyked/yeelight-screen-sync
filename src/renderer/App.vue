@@ -3,6 +3,8 @@
     <title-bar></title-bar>
     <div id="app">
       <main-interface :color="color" :lights="lights"></main-interface>
+<!--       <div>{{ imagePing }}</div>
+      <div>{{ fps }}</div> -->
     </div>
     <color :color="color"></color>
   </div>
@@ -21,9 +23,18 @@
     name: 'yeelight-screen-sync',
     data() {
       return {
+        desktopCapturer: new DesktopCapturer(),
+        imageAnalyzer: new ImageAnalyzer(),
         color: "#ffffff",
         lights: [],
-        imagePing: 0
+        imagePing: 0,
+        previousRun: new Date().getTime(),
+        lastRun: new Date().getTime()
+      }
+    },
+    computed: {
+      fps() {
+        return this.lastRun - this.previousRun;
       }
     },
     components: {
@@ -34,6 +45,7 @@
     created() {
 
       ipcRenderer.on('update-light', (event, light) => {
+        if (!light.id) light.id = light.host;
         if (!this.lights) {
           this.$set(this, 'lights', [ light ]);
         }
@@ -50,24 +62,40 @@
         }
       });
 
-      let desktopCapturer = new DesktopCapturer();
+      this.desktopCapturer.when('ready', () => {
+        window.runningDominant = window.runningDominant ? window.runningDominant + 1 : 1;
+        window.addEventListener('message', (event) => {
+          let split = event.data.split('-');
+          if (split[0] == 'dominant') {
+            this.getDominant(split[1]);
+          }
+        });
+        this.getDominant(window.runningDominant);
+      });
 
-      desktopCapturer.when('ready').then(() => {
-        let imageAnalyzer = new ImageAnalyzer();
-
-        setInterval(() => {
+      ipcRenderer.send('vue-ready');
+    },
+    methods: {
+      getDominant(id) {
+        if (id == window.runningDominant) {
           let t1 = new Date().getTime();
-          let imageBuffer = desktopCapturer.capture();
-          imageAnalyzer.analyze(imageBuffer).then(dominant => {
+          let imageBuffer = this.desktopCapturer.capture();
+          this.imageAnalyzer.analyze(imageBuffer).then(dominant => {
             ipcRenderer.send('dominant-color', dominant);
             let t2 = new Date().getTime();
             this.imagePing = t2 - t1;
             this.color = `rgb(${dominant.color[0]}, ${dominant.color[1]}, ${dominant.color[2]})`;
+            this.fpsCheck();
+            setTimeout(() => {
+              window.postMessage('dominant-' + id);
+            }, 80);
           });
-        }, 50);
-      });
-
-      ipcRenderer.send('vue-ready');
+        }
+      },
+      fpsCheck() {
+        this.previousRun = this.lastRun;
+        this.lastRun = new Date().getTime();
+      }
     }
   }
 </script>

@@ -1,6 +1,8 @@
 <template>
-  <div class="light" :class="{ 'had-error': light.hadError }">
-    <i class="fad fa-lightbulb icon"></i>
+  <div class="light" :class="{ 'had-error': light.hadError, 'sync-enabled': light.syncEnabled }">
+    <div class="icon-container">
+      <i class="fad fa-lightbulb icon" @click="toggleSync"></i>
+    </div>
     <span class="name" contenteditable ref="name" @focus="onNameFocus" @blur="onNameBlur" @keydown.enter.prevent="applyName">{{ light.name || 'Unnamed light' }}</span>
     <span class="host">{{ light.host }}</span>
   </div>
@@ -57,6 +59,14 @@
       },
       applyName(event) {
         this.$refs.name.blur();
+      },
+      toggleSync() {
+        if (this.light.syncEnabled) {
+          ipcRenderer.send('disable-sync', this.light.id);
+        }
+        else {
+          ipcRenderer.send('enable-sync', this.light.id);
+        }
       }
     }
   }
@@ -68,27 +78,57 @@
     flex-direction: column;
     align-items: center;
 
-    &.had-error {
+    &.had-error.sync-enabled {
       .icon {
         color: #e88;
       }
+    }
+
+    &:not(.sync-enabled) {
+      .icon {
+        opacity: 0.2;
+      }
+
+      .icon-container::before {
+        opacity: 1;
+      }
+    }
+  }
+
+  .icon-container {
+    position: relative;
+
+    &::before {
+      content: 'off';
+      position: absolute;
+      font-size: 14px;
+      top: calc(50% - 8px);
+      width: 100%;
+      text-align: center;
+      text-transform: uppercase;
+      font-weight: bold;
+      color: #aaa;
+      opacity: 0;
+      transition-duration: 300ms;
     }
   }
 
   .icon {
     font-size: 3em;
     padding: 0.2em;
+    cursor: pointer;
+    transition-duration: 300ms;
   }
 
   .name {
     height: 1.5em;
+    line-height: 1.5em;
     width: 8em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     outline: none;
     text-align: center;
     font-weight: 400;
+    overflow: hidden;
+    white-space: nowrap;
 
     &:hover {
       background-color: rgba(white, 0.03);
@@ -101,6 +141,7 @@
 
   .host {
     font-weight: 300;
-    font-size: 0.8em;
+    font-size: 11px;
+    opacity: 0.5;
   }
 </style>

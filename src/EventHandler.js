@@ -220,12 +220,13 @@ class EventHandler {
 
     _eventHappened(eventName) {
         if (this._eh_eventCheckpoints[eventName] !== true) {
-            if (Array.isArray(this._eh_eventCheckpoints[eventName])) {
-                this._eh_eventCheckpoints[eventName].forEach(resolve => {
+            let handlers = this._eh_eventCheckpoints[eventName];
+            this._eh_eventCheckpoints[eventName] = true;
+            if (Array.isArray(handlers)) {
+                handlers.forEach(resolve => {
                     resolve();
                 });
             }
-            this._eh_eventCheckpoints[eventName] = true;
         }
     };
 

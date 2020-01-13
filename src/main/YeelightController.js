@@ -1,11 +1,13 @@
 
 // import { ipcMain as IpcMain } from 'electron'
-import { Lookup } from 'node-yeelight-wifi'
+// import { Lookup } from 'node-yeelight-wifi'
+import Lookup from './CustomLookup'
 import Ip from 'ip'
 import FindFreePort from 'find-free-port'
 import Net from 'net'
 import Os from 'os'
 import ElectronStore from 'electron-store'
+import Log from 'electron-log'
 
 import MusicMode from './MusicMode'
 import EventHandler from '../EventHandler.js'
@@ -15,9 +17,9 @@ class YeelightController extends EventHandler {
   constructor () {
     super();
 
-    console.log('Loading yeelight controller');
+    Log.info('Loading yeelight controller')
 
-    this.lights = [];
+    this.lightFinder = new Lookup();
     this.currentDominant = null;
     this.lastUpdate = new Date().getTime();
     this.lastsTurnOff = [];
@@ -27,8 +29,12 @@ class YeelightController extends EventHandler {
     this._startServer().then(() => {
       this.lookup();
     }).catch(err => {
-      console.error(err);
+      Log.error(err);
     });
+  }
+
+  get lights() {
+    return this.lightFinder.lights;
   }
 
   _startServer () {
@@ -41,23 +47,23 @@ class YeelightController extends EventHandler {
           socket.on('close', hadError => {
             light.musicMode = null;
             light.hadError = hadError;
-            console.log('Closed', hadError);
+            Log.info('Closed', hadError);
             this._sendLightUpdate(light);
             if (hadError) this._connectLightToServer(light);
           });
 
           socket.on('error', err => {
-            console.error(err);
+            Log.error(err);
           });
           this._trigger('music-mode-started', light);
         }
         else {
-          console.warn('Unknown light attempted to connect to server', address, this.lights[0].host);
+          Log.warn('Unknown light attempted to connect to server', address, this.lights[0].host);
         }
       });
 
       this.server.on('error', (e) => {
-        console.error(JSON.stringify(e));
+        Log.error(JSON.stringify(e));
       });
 
       FindFreePort(3000, 6000, (err, freePort) => {
@@ -102,14 +108,14 @@ class YeelightController extends EventHandler {
     let maxTimeout = 60000;
 
     while (!light.musicMode) {
-      console.log('Requesting music');
+      Log.info('Requesting music');
       try {
         let host = this.findIpInNetwork(light.host);
         light.sendCommand("set_music", [1, host, this.port]).catch(e => {
-          console.error(e);
+          Log.error(e);
         });
       } catch(e) {
-        console.warn(e);
+        Log.warn(e);
       }
 
       // Wait for connection or timeout
@@ -128,7 +134,7 @@ class YeelightController extends EventHandler {
     }
     light.hadError = false;
     this._sendLightUpdate(light);
-    console.log('Connected to music!');
+    Log.info('Connected to music!');
   }
 
   _wait(time) {
@@ -139,30 +145,37 @@ class YeelightController extends EventHandler {
     });
   }
 
-  lookup () {
-    let look = new Lookup();
-    let ok = false;
-
-    look.on("detected", light => {
-      ok = true;
+  async lookup () {
+    this.lightFinder.on("detected", light => {
       this.addLight(light);
     });
 
-    let interval = setInterval(() => {
-      if (!ok) {
-        look.lookup();
-      }
-      else {
-        clearInterval(interval);
-      }
-    }, 5000);
+    this.lightFinder.lookup();
+    await this._wait(1000);
+    this.lightFinder.findByPortscanning();
   }
 
   addLight (light) {
-    this.lights.push(light);
-    console.log("New yeelight detected: id=" + light.id + " name=" + light.name);
+    Log.info("New yeelight detected: id=" + light.id + " name=" + light.name);
+    light.syncEnabled = false;
+    light.initialState = JSON.parse(JSON.stringify(light.getState()));
     this._sendLightUpdate(light);
     this._connectLightToServer(light);
+  }
+
+  enableSync(idOrHost) {
+    let light = this.lights.find(light => light.id == idOrHost || light.host == light.host);
+    light.syncEnabled = true;
+    this._sendLightUpdate(light);
+  }
+
+  disableSync(idOrHost) {
+    let light = this.lights.find(light => light.id == idOrHost || light.host == light.host);
+    light.syncEnabled = false;
+    light.setRGB(light.initialState.rgb);
+    light.setBright(light.initialState.bright);
+    light.setPower(light.initialState.power);
+    this._sendLightUpdate(light);
   }
 
   _sendLightUpdate(light) {
@@ -170,6 +183,7 @@ class YeelightController extends EventHandler {
       id: light.id,
       name: light.name,
       host: light.host,
+      syncEnabled: light.syncEnabled,
       musicEnabled: !!light.musicMode,
       hadError: !!light.hadError
     });
@@ -201,33 +215,35 @@ class YeelightController extends EventHandler {
     let currentTime = new Date().getTime();
     let elapsedTime = (currentTime - this.lastUpdate) / 30;
 
-    if (diff + elapsedTime > 50 || !this.currentDominant) {
+    if (diff + elapsedTime > 80 || !this.currentDominant) {
       this.lights.forEach(light => {
-        let duration = Math.max(1000 - diff * 10, 300);
+        if (light.syncEnabled) {
+          let duration = Math.max(1000 - diff * 3, 100);
 
-        // Compute number of power off during the last minute
-        let first;
-        let now = new Date().getTime();
-        while (first = this.lastsTurnOff[0]) {
-          if (now - first > 60000) this.lastsTurnOff.shift();
-          else break;
-        }
-        let powerOffRate = this.lastsTurnOff.length;
-
-        if (dominant.light <= 1 && light.power && powerOffRate < 14) {
-          this.lastsTurnOff.push(new Date().getTime());
-          light.setPower(false, duration);
-        }
-        else if (dominant.light > 1) {
-          if (!light.power) {
-            light.setPower(true, duration);
-            this._connectLightToServer(light);
-            light.setRGB(dominant.color, duration);
+          // Compute number of power off during the last minute
+          let first;
+          let now = new Date().getTime();
+          while (first = this.lastsTurnOff[0]) {
+            if (now - first > 60000) this.lastsTurnOff.shift();
+            else break;
           }
-          else {
-            if (light.musicMode) {
-              light.musicMode.setRGB(dominant.color, duration);
-              light.musicMode.setBright(dominant.light, duration);
+          let powerOffRate = this.lastsTurnOff.length;
+
+          if (dominant.light <= 1 && light.power && powerOffRate < 14) {
+            this.lastsTurnOff.push(new Date().getTime());
+            light.setPower(false, duration);
+          }
+          else if (dominant.light > 1) {
+            if (!light.power) {
+              light.setPower(true, duration);
+              this._connectLightToServer(light);
+              light.setRGB(dominant.color, duration);
+            }
+            else {
+              if (light.musicMode) {
+                light.musicMode.setRGB(dominant.color, duration);
+                light.musicMode.setBright(dominant.light, duration);
+              }
             }
           }
         }

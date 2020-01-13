@@ -24,7 +24,8 @@ function createWindow () {
     width: 500,
     webPreferences: {nodeIntegration: true},
     frame: false,
-    darkTheme: true
+    darkTheme: true,
+    backgroundColor: '#222222'
     // transparent: true
   })
 
@@ -69,6 +70,18 @@ ipcMain.on('vue-ready', () => {
 
     ipcMain.on('dominant-color', (event, dominant) => {
       yeelightController.handleColor(dominant);
+    });
+
+    ipcMain.on('scan', (event, dominant) => {
+      yeelightController.lookup();
+    });
+
+    ipcMain.on('enable-sync', (event, id) => {
+      yeelightController.enableSync(id);
+    });
+
+    ipcMain.on('disable-sync', (event, id) => {
+      yeelightController.disableSync(id);
     });
 
     let proxys = [
