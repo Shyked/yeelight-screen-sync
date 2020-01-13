@@ -20,8 +20,8 @@ function createWindow () {
    * Initial window options
    */
   mainWindow = new BrowserWindow({
-    height: 300,
-    width: 500,
+    height: 340,
+    width: 540,
     webPreferences: {nodeIntegration: true},
     frame: false,
     darkTheme: true,

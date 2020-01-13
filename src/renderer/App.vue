@@ -6,6 +6,16 @@
 <!--       <div>{{ imagePing }}</div>
       <div>{{ fps }}</div> -->
     </div>
+    <div class="bottom-bar">
+      <div class="refresh-rate">
+        
+      </div>
+      <div class="separator"></div>
+      <button class="scan" @click="scan">
+        Re-scan
+        <i class="far fa-sync icon" ref="scanIcon"></i>
+      </button>
+    </div>
     <color :color="color"></color>
   </div>
 </template>
@@ -95,6 +105,16 @@
       fpsCheck() {
         this.previousRun = this.lastRun;
         this.lastRun = new Date().getTime();
+      },
+      scan() {
+        this.$refs.scanIcon.classList.add('animate');
+        this.restartAnimation(this.$refs.scanIcon);
+        ipcRenderer.send('scan');
+      },
+      restartAnimation(element) {
+        element.style.display = "none";
+        void element.offsetWidth;
+        element.style.display = "";
       }
     }
   }
@@ -128,5 +148,53 @@
     padding: 10px;
     background-color: #222;
     overflow: auto;
+  }
+
+  .bottom-bar {
+    position: relative;
+    width: 100%;
+    height: 40px;
+    bottom: 0;
+    display: flex;
+
+    .separator {
+      flex-grow: 1;
+    }
+  }
+
+  .scan {
+    height: 100%;
+    text-transform: uppercase;
+    font-size: 13px;
+    opacity: 0.6;
+    border: none;
+    background-image: none;
+    background-color: transparent;
+    outline: none;
+    color: rgba(white, 0.8);
+    cursor: pointer;
+    padding: 0 16px;
+
+    &:active, &:hover:active {
+      background-color: rgba(white, 0.08);
+    }
+
+    &:hover {
+      background-color: rgba(white, 0.03);
+      opacity: 1;
+    }
+
+    .icon.animate {
+      animation: spin 1s;
+    }
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
 </style>
