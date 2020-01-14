@@ -1,6 +1,6 @@
 {
   "name": "yeelight-screen-sync",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "author": "Rémy / Shyked <remy.shyked@gmail.com>",
   "description": "An electron-vue project",
   "license": null,
