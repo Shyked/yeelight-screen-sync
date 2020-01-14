@@ -51,6 +51,11 @@ app.on('ready', createWindow)
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
+    try {
+      if (yeelightController) yeelightController.lights.forEach((light) => {
+        yeelightController.disableSync(light);
+      });
+    } catch(e) {}
     app.quit()
   }
 })
@@ -90,7 +95,9 @@ ipcMain.on('vue-ready', () => {
 
     proxys.forEach(eventName => {
       yeelightController.on(eventName, function() {
-        mainWindow.webContents.send.apply(mainWindow.webContents, [eventName].concat(Array.from(arguments)));
+        if (!mainWindow.isDestroyed()) {
+          mainWindow.webContents.send.apply(mainWindow.webContents, [eventName].concat(Array.from(arguments)));
+        }
       });
     });
   }

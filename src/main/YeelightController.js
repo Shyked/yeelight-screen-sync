@@ -19,6 +19,7 @@ class YeelightController extends EventHandler {
 
     Log.info('Loading yeelight controller')
 
+    this.lights = [];
     this.lightFinder = new Lookup();
     this.currentDominant = null;
     this.lastUpdate = new Date().getTime();
@@ -31,10 +32,6 @@ class YeelightController extends EventHandler {
     }).catch(err => {
       Log.error(err);
     });
-  }
-
-  get lights() {
-    return this.lightFinder.lights;
   }
 
   _startServer () {
@@ -108,6 +105,7 @@ class YeelightController extends EventHandler {
     let maxTimeout = 60000;
 
     while (!light.musicMode) {
+      if (!light.power) return false;
       Log.info('Requesting music');
       try {
         let host = this.findIpInNetwork(light.host);
@@ -135,6 +133,7 @@ class YeelightController extends EventHandler {
     light.hadError = false;
     this._sendLightUpdate(light);
     Log.info('Connected to music!');
+    return true;
   }
 
   _wait(time) {
@@ -145,36 +144,40 @@ class YeelightController extends EventHandler {
     });
   }
 
-  async lookup () {
+  async lookup (method = 'both') {
     this.lightFinder.on("detected", light => {
       this.addLight(light);
     });
 
-    this.lightFinder.lookup();
-    await this._wait(1000);
-    this.lightFinder.findByPortscanning();
+    if (method == 'both' || method == 'lookup') this.lightFinder.lookup();
+    if (method == 'both') await this._wait(1000);
+    if (method == 'both' || method == 'port') this.lightFinder.findByPortscanning();
   }
 
-  addLight (light) {
+  async addLight (light) {
     Log.info("New yeelight detected: id=" + light.id + " name=" + light.name);
     light.syncEnabled = false;
+    if (!light.id) {
+      await light.sendCommand('get_prop', ['power', 'bright', 'rgb']);
+    }
     light.initialState = JSON.parse(JSON.stringify(light.getState()));
+    this.lights.push(light);
     this._sendLightUpdate(light);
     this._connectLightToServer(light);
   }
 
   enableSync(idOrHost) {
-    let light = this.lights.find(light => light.id == idOrHost || light.host == light.host);
+    let light = this.findLight(idOrHost);
     light.syncEnabled = true;
     this._sendLightUpdate(light);
   }
 
   disableSync(idOrHost) {
-    let light = this.lights.find(light => light.id == idOrHost || light.host == light.host);
+    let light = this.findLight(idOrHost);
     light.syncEnabled = false;
+    light.setPower(light.initialState.power);
     light.setRGB(light.initialState.rgb);
     light.setBright(light.initialState.bright);
-    light.setPower(light.initialState.power);
     this._sendLightUpdate(light);
   }
 
@@ -201,6 +204,19 @@ class YeelightController extends EventHandler {
 
   findLightWithId (id) {
     return this.lights.find(light => light.id == id);
+  }
+
+  findLight(mixed) {
+    let light;
+    if (typeof mixed == 'object') light = mixed;
+    else light = this.lights.find(light => light.id == mixed || light.host == mixed);
+    if (!light) {
+      let str = "Couldn't find light with id or host " + mixed;
+      Log.error(str);
+      Log.info(this.lights);
+      throw str;
+    }
+    return light;
   }
 
   handleColor (dominant) {

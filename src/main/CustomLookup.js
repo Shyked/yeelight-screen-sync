@@ -43,7 +43,7 @@ class Lookup extends EventEmitter
 
         this.ssdp.on('response', (data) =>
         {
-            let host = data.LOCATION.match(/\/\/(.*):(.*)/g)[1];
+            let host = data.LOCATION.match(/\/\/(.*):(.*)/)[1];
 
             let light = this.lights.find(light => light.id === data.ID || light.host === host);
 

@@ -4,7 +4,7 @@
     <div id="app">
       <main-interface :color="color" :lights="lights"></main-interface>
 <!--       <div>{{ imagePing }}</div>
-      <div>{{ fps }}</div> -->
+      <div>{{ computePing }}</div> -->
     </div>
     <div class="bottom-bar">
       <div class="refresh-rate">
@@ -39,11 +39,12 @@
         lights: [],
         imagePing: 0,
         previousRun: new Date().getTime(),
-        lastRun: new Date().getTime()
+        lastRun: new Date().getTime(),
+        targetFps: 60
       }
     },
     computed: {
-      fps() {
+      computePing() {
         return this.lastRun - this.previousRun;
       }
     },
@@ -60,7 +61,7 @@
           this.$set(this, 'lights', [ light ]);
         }
         else {
-          let existingLight = this.lights.find(existingLight => existingLight.id == light.id);
+          let existingLight = this.lights.find(existingLight => existingLight.id == light.id || existingLight.host == light.host);
           if (existingLight) {
             for (let id in existingLight) {
               if (existingLight.hasOwnProperty(id)) {
@@ -86,36 +87,47 @@
       ipcRenderer.send('vue-ready');
     },
     methods: {
+
       getDominant(id) {
         if (id == window.runningDominant) {
-          let t1 = new Date().getTime();
           let imageBuffer = this.desktopCapturer.capture();
           this.imageAnalyzer.analyze(imageBuffer).then(dominant => {
             ipcRenderer.send('dominant-color', dominant);
-            let t2 = new Date().getTime();
-            this.imagePing = t2 - t1;
+
             this.color = `rgb(${dominant.color[0]}, ${dominant.color[1]}, ${dominant.color[2]})`;
-            this.fpsCheck();
-            setTimeout(() => {
+
+            this.pingCheck();
+            let timeout = 1000 / this.targetFps - this.computePing;
+
+            if (timeout <= 3) { // setTimeout 0 takes 0~3ms
               window.postMessage('dominant-' + id);
-            }, 80);
+            }
+            else {
+              setTimeout(() => {
+                window.postMessage('dominant-' + id);
+              }, timeout);
+            }
           });
         }
       },
-      fpsCheck() {
+
+      pingCheck() {
         this.previousRun = this.lastRun;
         this.lastRun = new Date().getTime();
       },
+
       scan() {
         this.$refs.scanIcon.classList.add('animate');
         this.restartAnimation(this.$refs.scanIcon);
         ipcRenderer.send('scan');
       },
+
       restartAnimation(element) {
         element.style.display = "none";
         void element.offsetWidth;
         element.style.display = "";
       }
+
     }
   }
 </script>
