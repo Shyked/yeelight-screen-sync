@@ -1,15 +1,13 @@
 <template>
-  <div id="window">
+  <div id="window" @click="onClick">
     <title-bar></title-bar>
     <div id="app">
       <main-interface :color="color" :lights="lights"></main-interface>
-<!--       <div>{{ imagePing }}</div>
-      <div>{{ computePing }}</div> -->
+      <!-- <div>{{ imagePing }}</div> -->
+      <!-- <div>{{ fps }}</div> -->
     </div>
     <div class="bottom-bar">
-      <div class="refresh-rate">
-        
-      </div>
+      <fps-selector @fps-changed="updateFps"></fps-selector>
       <div class="separator"></div>
       <button class="scan" @click="scan">
         Re-scan
@@ -24,6 +22,7 @@
   import MainInterface from '@/components/MainInterface'
   import TitleBar from '@/components/TitleBar'
   import Color from '@/components/Color'
+  import FpsSelector from '@/components/FpsSelector'
 
   import { ipcRenderer } from 'electron'
   import DesktopCapturer from './DesktopCapturer'
@@ -40,18 +39,19 @@
         imagePing: 0,
         previousRun: new Date().getTime(),
         lastRun: new Date().getTime(),
-        targetFps: 60
+        targetFps: 1
       }
     },
     computed: {
-      computePing() {
-        return this.lastRun - this.previousRun;
+      fps() {
+        return (1000 / (this.lastRun - this.previousRun)).toFixed(2);
       }
     },
     components: {
       MainInterface,
       TitleBar,
-      Color
+      Color,
+      FpsSelector
     },
     created() {
 
@@ -76,9 +76,11 @@
       this.desktopCapturer.when('ready', () => {
         window.runningDominant = window.runningDominant ? window.runningDominant + 1 : 1;
         window.addEventListener('message', (event) => {
-          let split = event.data.split('-');
-          if (split[0] == 'dominant') {
-            this.getDominant(split[1]);
+          if (event.data && typeof event.data == 'string') {
+            let split = event.data.split('-');
+            if (split[0] == 'dominant') {
+              this.getDominant(split[1]);
+            }
           }
         });
         this.getDominant(window.runningDominant);
@@ -91,13 +93,17 @@
       getDominant(id) {
         if (id == window.runningDominant) {
           let imageBuffer = this.desktopCapturer.capture();
+          let t1 = new Date().getTime();
           this.imageAnalyzer.analyze(imageBuffer).then(dominant => {
             ipcRenderer.send('dominant-color', dominant);
 
             this.color = `rgb(${dominant.color[0]}, ${dominant.color[1]}, ${dominant.color[2]})`;
 
+            let t2 = new Date().getTime();
+            let computeTime = t2 - t1;
+
             this.pingCheck();
-            let timeout = 1000 / this.targetFps - this.computePing;
+            let timeout = 1000 / this.targetFps - computeTime;
 
             if (timeout <= 3) { // setTimeout 0 takes 0~3ms
               window.postMessage('dominant-' + id);
@@ -126,6 +132,14 @@
         element.style.display = "none";
         void element.offsetWidth;
         element.style.display = "";
+      },
+
+      updateFps(fps) {
+        this.targetFps = fps;
+      },
+
+      onClick(event) {
+        this.$root.$emit('click', event);
       }
 
     }
@@ -152,6 +166,14 @@
     flex-direction: column;
     width: 100%;
     height: 100%;
+
+    > * {
+      flex-shrink: 0;
+    }
+
+    > #app {
+      flex-shrink: 1;
+    }
   }
 
   #app {
@@ -167,6 +189,7 @@
     width: 100%;
     height: 40px;
     bottom: 0;
+    font-size: 13px;
     display: flex;
 
     .separator {
@@ -177,7 +200,6 @@
   .scan {
     height: 100%;
     text-transform: uppercase;
-    font-size: 13px;
     opacity: 0.6;
     border: none;
     background-image: none;
