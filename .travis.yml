@@ -32,5 +32,19 @@ install:
 script:
 - yarn run build
 branches:
-  only:
-  - master
+  except:
+  - "/^(?!v\\d+\\.\\d+\\.\\d+(-beta\\.\\d+)?).+$/"
+deploy:
+  provider: releases
+  api_key:
+    secure: $GITHUB_OAUTH_TOKEN
+  skip_cleanup: true
+  file_glob: true
+  file:
+    - build/yeelight-screen-sync*.dmg
+    - build/yeelight-screen-sync*.zip
+    - build/yeelight-screen-sync*.tar.gz
+    - build/yeelight-screen-sync*.exe
+  on:
+    tags: true
+    repo: shyked/yelight-screen-sync
