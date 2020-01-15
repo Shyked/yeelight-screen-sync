@@ -3,13 +3,13 @@ import Jimp from 'jimp';
 class ImageAnalyzer {
 
   constructor () {
-
+    this._lastMeans = null;
   }
 
   analyze (buffer) {
     return new Promise((resolve, reject) => {
       Jimp.read(buffer).then(image => {
-        let colorsList = {
+        let histogram = {
           r: {},
           g: {},
           b: {}
@@ -26,25 +26,25 @@ class ImageAnalyzer {
             min = px.r < px.g ? (px.b < px.r ? px.b : px.r) : (px.b < px.g ? px.b : px.g);
             diff = v - min;
             s = diff == 0 ? 0 : diff / v;
-            colorWeight = s * v + 1;
+            colorWeight = (s * v) / 20 + 1;
 
-            colorsList.r[px.r] = (colorsList.r[px.r] || 0) + colorWeight;
-            colorsList.g[px.g] = (colorsList.g[px.g] || 0) + colorWeight;
-            colorsList.b[px.b] = (colorsList.b[px.b] || 0) + colorWeight;
+            histogram.r[px.r] = (histogram.r[px.r] || 0) + colorWeight;
+            histogram.g[px.g] = (histogram.g[px.g] || 0) + colorWeight;
+            histogram.b[px.b] = (histogram.b[px.b] || 0) + colorWeight;
             total += colorWeight;
           }
         }
 
         let meds = [
-          this.getMed(colorsList.r, total),
-          this.getMed(colorsList.g, total),
-          this.getMed(colorsList.b, total)
+          this.getMed(histogram.r, total),
+          this.getMed(histogram.g, total),
+          this.getMed(histogram.b, total)
         ];
 
         let means = [
-          this.getMean(colorsList.r),
-          this.getMean(colorsList.g),
-          this.getMean(colorsList.b)
+          this.getMean(histogram.r),
+          this.getMean(histogram.g),
+          this.getMean(histogram.b)
         ];
 
         let meanHsv = this.rgbToHsv(means[0], means[1], means[2]);
@@ -53,17 +53,28 @@ class ImageAnalyzer {
         hsv.v = Math.min(meanHsv.v * 2, 100);
         let rgb = this.hsvToRgb(hsv);
 
+        let delta;
+        if (this._lastMeans) {
+          delta = Math.abs(this._lastMeans[0] - means[0])
+                  + Math.abs(this._lastMeans[1] - means[1])
+                  + Math.abs(this._lastMeans[2] - means[2]);
+        }
+        else delta = 100;
+
 
         if (rgb.r + rgb.g + rgb.b < 15) {
           rgb.r = rgb.g = rgb.b = 10;
           hsv.v = 0;
         }
 
-        if (hsv.v == 0) hsv.V = 1;
+        if (hsv.v == 0) hsv.v = 1;
+
+        this._lastMeans = means;
 
         resolve({
           color: [rgb.r, rgb.g, rgb.b],
-          light: (hsv.v / 100) * (hsv.v / 100) * 100
+          light: (hsv.v / 100) * (hsv.v / 100) * 100,
+          delta: delta
         });
       }).catch(err => {
         console.error(err);

@@ -220,21 +220,13 @@ class YeelightController extends EventHandler {
   }
 
   handleColor (dominant) {
-    let diff = null;
-    if (this.currentDominant) {
-      diff =  Math.abs(dominant.color[0] - this.currentDominant.color[0])
-              + Math.abs(dominant.color[1] - this.currentDominant.color[1])
-              + Math.abs(dominant.color[2] - this.currentDominant.color[2])
-              + Math.abs(dominant.light - this.currentDominant.light);
-    }
-
     let currentTime = new Date().getTime();
-    let elapsedTime = (currentTime - this.lastUpdate) / 30;
+    let elapsedTime = (currentTime - this.lastUpdate) / 50;
 
-    if (diff + elapsedTime > 80 || !this.currentDominant) {
+    if (dominant.delta + elapsedTime > 40 || !this.currentDominant) {
       this.lights.forEach(light => {
         if (light.syncEnabled) {
-          let duration = Math.max(1000 - diff * 3, 100);
+          let duration = Math.max(1000 - dominant.delta * 7, 100);
 
           // Compute number of power off during the last minute
           let first;
