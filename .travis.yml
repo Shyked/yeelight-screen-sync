@@ -37,8 +37,8 @@ branches:
 deploy:
   provider: releases
   api_key:
-    secure: $GITHUB_OAUTH_TOKEN
-  cleanup: true
+    secure: $GH_TOKEN
+  cleanup: false
   file_glob: true
   file:
     - build/*
