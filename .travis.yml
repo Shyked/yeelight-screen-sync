@@ -47,4 +47,4 @@ deploy:
     - build/yeelight-screen-sync*.exe
   on:
     tags: true
-    repo: shyked/yeelight-screen-sync
+    repo: Shyked/yeelight-screen-sync
