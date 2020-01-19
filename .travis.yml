@@ -6,9 +6,8 @@ matrix:
   include:
   - os: osx
   - os: linux
-    services: docker
-    language: node_js
-    node_js: '10'
+    env: CC=clang CXX=clang++ npm_config_clang=1
+    compiler: clang
 cache:
   directories:
   - node_modules
@@ -26,24 +25,19 @@ before_install:
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install --no-install-recommends -y icnsutils graphicsmagick xz-utils; fi
 install:
 - nvm install 10
+- curl -o- -L https://yarnpkg.com/install.sh | bash
 - source ~/.bashrc
 - npm install -g xvfb-maybe
+- yarn
 script:
 - |
   npm run build
-  ENVS=`env | grep -iE '^(DEBUG|NODE_|ELECTRON_|YARN_|NPM_|CI|CIRCLE|TRAVIS|APPVEYOR_|CSC_|_TOKEN|_KEY|AWS_|STRIP|BUILD_)([A-Z]|_)*=' | sed -n '/^[^\t]/s/=.*//p' | sed '/^$/d' | sed 's/^/-e /g' | tr '\n' ' '`
-  if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-    docker run $ENVS --rm \
-      -v ${PWD}:/project \
-      -v ~/.cache/electron:/root/.cache/electron \
-      -v ~/.cache/electron-builder:/root/.cache/electron-builder \
-      electronuserland/builder:wine \
-      /bin/bash -c "npm run release:linux && npm run release:win"
-  else
+  if [ "$TRAVIS_OS_NAME" == "osx" ]; then
     npm run release:mac
+  else
+    npm run release:linux
+    npm run release:win
   fi
-before_cache:
-- rm -rf $HOME/.cache/electron-builder/wine
 branches:
   except:
   - "/^(?!v\\d+\\.\\d+\\.\\d+(-beta\\.\\d+)?).+$/"
