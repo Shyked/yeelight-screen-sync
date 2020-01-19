@@ -48,8 +48,9 @@ class ImageAnalyzer {
         ];
 
         let meanHsv = this.rgbToHsv(means[0], means[1], means[2]);
-        let hsv = this.rgbToHsv(meds[0], meds[1], meds[2]);
-        hsv.s = Math.min(hsv.s * 1.6, 100);
+        // let hsv = this.rgbToHsv(meds[0], meds[1], meds[2]);
+        let hsv = this.rgbToHsv((means[0] + meds[0]) / 2, (means[1] + meds[1]) / 2, (means[2] + meds[2]) / 2);
+        hsv.s = Math.min(hsv.s * 1.3, 100);
         hsv.v = Math.min(meanHsv.v * 2, 100);
         let rgb = this.hsvToRgb(hsv);
 
@@ -64,10 +65,8 @@ class ImageAnalyzer {
 
         if (rgb.r + rgb.g + rgb.b < 15) {
           rgb.r = rgb.g = rgb.b = 10;
-          hsv.v = 0;
+          hsv.v = 1;
         }
-
-        if (hsv.v == 0) hsv.v = 1;
 
         this._lastMeans = means;
 
