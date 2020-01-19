@@ -89,6 +89,10 @@ ipcMain.on('vue-ready', () => {
       yeelightController.disableSync(id);
     });
 
+    ipcMain.on('fps-changed', (event, fps) => {
+      yeelightController.setTargetFps(fps);
+    });
+
     let proxys = [
       'update-light'
     ];

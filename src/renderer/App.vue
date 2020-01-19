@@ -53,6 +53,11 @@
       Color,
       FpsSelector
     },
+    watch: {
+      targetFps (value) {
+        ipcRenderer.send('fps-changed', value);
+      }
+    },
     created() {
 
       ipcRenderer.on('update-light', (event, light) => {

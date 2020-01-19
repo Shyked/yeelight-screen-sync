@@ -26,6 +26,7 @@ class YeelightController extends EventHandler {
     this.lastsTurnOff = [];
     this.server = null;
     this.port = null;
+    this.targetFps = 10;
 
     this._startServer().then(() => {
       this.lookup();
@@ -136,7 +137,7 @@ class YeelightController extends EventHandler {
     return true;
   }
 
-  _wait(time) {
+  _wait (time) {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         resolve();
@@ -166,13 +167,13 @@ class YeelightController extends EventHandler {
     this._connectLightToServer(light);
   }
 
-  enableSync(idOrHost) {
+  enableSync (idOrHost) {
     let light = this.findLight(idOrHost);
     light.syncEnabled = true;
     this._sendLightUpdate(light);
   }
 
-  disableSync(idOrHost) {
+  disableSync (idOrHost) {
     let light = this.findLight(idOrHost);
     light.syncEnabled = false;
     light.setPower(light.initialState.power);
@@ -181,7 +182,7 @@ class YeelightController extends EventHandler {
     this._sendLightUpdate(light);
   }
 
-  _sendLightUpdate(light) {
+  _sendLightUpdate (light) {
     this._trigger('update-light', {
       id: light.id,
       name: light.name,
@@ -192,7 +193,7 @@ class YeelightController extends EventHandler {
     });
   }
 
-  requestUpdate() {
+  requestUpdate () {
     this.lights.forEach(light => {
       this._sendLightUpdate(light);
     });
@@ -206,7 +207,7 @@ class YeelightController extends EventHandler {
     return this.lights.find(light => light.id == id);
   }
 
-  findLight(mixed) {
+  findLight (mixed) {
     let light;
     if (typeof mixed == 'object') light = mixed;
     else light = this.lights.find(light => light.id == mixed || light.host == mixed);
@@ -219,14 +220,32 @@ class YeelightController extends EventHandler {
     return light;
   }
 
-  handleColor (dominant) {
-    let currentTime = new Date().getTime();
-    let elapsedTime = (currentTime - this.lastUpdate) / 50;
+  setTargetFps (fps) {
+    this.targetFps = fps;
+  }
 
-    if (dominant.delta + elapsedTime > 40 || !this.currentDominant) {
+  handleColor (dominant) {
+    let deltaToCurrent = null;
+    if (this.currentDominant) {
+      deltaToCurrent =  Math.abs(dominant.color[0] - this.currentDominant.color[0])
+                        + Math.abs(dominant.color[1] - this.currentDominant.color[1])
+                        + Math.abs(dominant.color[2] - this.currentDominant.color[2])
+                        + Math.abs(dominant.light - this.currentDominant.light);
+    }
+
+    let currentTime = new Date().getTime();
+    let elapsedTime = currentTime - this.lastUpdate;
+
+    if (dominant.delta + deltaToCurrent / 2 + elapsedTime / 150 > 100 || !this.currentDominant) {
+      let baseDelta = Math.sqrt(dominant.delta) * 150;
+      let fpsRelativeCoeff = (-7 / (this.targetFps + 5)) + 1.3;
+      if (fpsRelativeCoeff > 1) fpsRelativeCoeff = 1;
+      else if (fpsRelativeCoeff < 0) fpsRelativeCoeff = 0;
+
+      let duration = 1600 - baseDelta * fpsRelativeCoeff;
+      if (duration < 100) duration = 100;
       this.lights.forEach(light => {
         if (light.syncEnabled) {
-          let duration = Math.max(1000 - dominant.delta * 7, 100);
 
           // Compute number of power off during the last minute
           let first;
@@ -239,13 +258,13 @@ class YeelightController extends EventHandler {
 
           if (dominant.light <= 1 && light.power && powerOffRate < 14) {
             this.lastsTurnOff.push(new Date().getTime());
-            light.setPower(false, duration);
+            light.setPower(false, duration).catch(Log.error);
           }
           else if (dominant.light > 1) {
             if (!light.power) {
-              light.setPower(true, duration);
+              light.setPower(true, duration).catch(Log.error);
               this._connectLightToServer(light);
-              light.setRGB(dominant.color, duration);
+              light.setRGB(dominant.color, duration).catch(Log.error);
             }
             else {
               if (light.musicMode) {
