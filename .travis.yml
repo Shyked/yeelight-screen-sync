@@ -67,11 +67,10 @@ before_cache:
 branches:
   except:
   - "/^(?!v\\d+\\.\\d+\\.\\d+(-beta\\.\\d+)?).+$/"
-  
+
 deploy:
   provider: releases
-  api_key:
-    secure: "LJU+NLhWS8yCBR9TMnPg0aMI618zZpW1+v297nk5O3xxbJnMxV4usIl+Yi+3o0sUDn/xevfFV2nQe7EPRsjQxetVHsseuH/mr/9cAcOVcf7rUoQGI1ZU+M5RPgNz4P4kPGlao/9nzaCqasGWdYLIk+FCU8eus4zGPl5S8e1yWoP8C3cfpyWVAe/tTNvQeKh5G7t9PKlb53pnIJM65VKuxrJ3wZQPdutUortdCDuhnnED20kJljZaww/HpdtOhVSyGeVLYotQd00bb+mNWqWcdxj3uGxU15R57Rnj+Lz3IGgFBEHJNCmgRedSecVMLpi943N6aTLKGKolHasIcgSdFOH0riMlZlDNyn3XKEkAcFoqVG6PhY22fXPXkdiXcaFC5mWUJuLwSFDoxafVZo5NznrBl/4wfXlrfE/osZ3B4NRiw7RustCLZ9vvj1a7cglxj5gFmxlZgM9vnn7zEBP/nOyJMV4tQGcB0xHz3fXsEcE9i4PCnWYvG/2RezS7/2fNWsRLcFAT0WgAkfiKmX1saiafXuf7ncOfzOCbpaVJ2Dge8hfhnLrwXXhdE9VL3eaSP3f0bGQ5dhDqVrg6Hf4xjfFB/knzuMBrTT8v9g+z6AEsYHvOyI2pI+Ua5VLSqIXwRrAUDFCOLYxL/azAM2DxMHHbQM0PYXgfIMeUJFktWi8="
+  api_key: $GH_TOKEN
   cleanup: false
   file_glob: true
   file:
