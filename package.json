@@ -1,6 +1,6 @@
 {
   "name": "yeelight-screen-sync",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Rémy / Shyked <remy.shyked@gmail.com>",
   "description": "An electron-vue project",
   "license": null,
@@ -17,7 +17,7 @@
     "postinstall": ""
   },
   "build": {
-    "productName": "yeelight-screen-sync",
+    "productName": "YeelightScreenSync",
     "appId": "com.shyked.yeelight",
     "directories": {
       "output": "build"
@@ -41,13 +41,30 @@
       ]
     },
     "mac": {
-      "icon": "build/icons/icon.icns"
-    },
-    "win": {
-      "icon": "build/icons/icon.ico"
+      "target": [
+        "default"
+      ],
+      "icon": "build/icons/icon.icns",
+      "category": "public.app-category.utilities"
     },
     "linux": {
-      "icon": "build/icons"
+      "icon": "build/icons",
+      "executableName": "YeelightScreenSync",
+      "target": [
+        "tar.gz"
+      ],
+      "maintainer": "Shyked"
+    },
+    "win": {
+      "icon": "build/icons/icon.ico",
+      "target": [
+        "zip",
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "perMachine": false,
+      "include": "build/installer.nsh"
     }
   },
   "dependencies": {
