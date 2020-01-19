@@ -3,6 +3,8 @@ dist/electron/*
 dist/web/*
 releases/*
 node_modules/
+node_modules_windows/
+node_modules_linux/
 npm-debug.log
 npm-debug.log.*
 thumbs.db
