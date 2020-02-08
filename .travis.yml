@@ -72,6 +72,7 @@ deploy:
   provider: releases
   api_key: $GH_TOKEN
   cleanup: false
+  skip_cleanup: true
   file_glob: true
   file:
     - releases/*.dmg
