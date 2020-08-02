@@ -245,8 +245,6 @@ class YeelightController extends EventHandler {
     let elapsedTime = currentTime - this.lastUpdate;
 
     if (dominant.delta + deltaToCurrent / 2 + elapsedTime * elapsedTime / 100000 > 60 || !this.currentDominant) {
-      console.log(deltaToCurrentArray);
-      console.log(elapsedTime * elapsedTime / 100000);
       let baseDelta = Math.sqrt(dominant.delta) * 150;
       let fpsRelativeCoeff = (-7 / (this.targetFps + 5)) + 1.3;
       if (fpsRelativeCoeff > 1) fpsRelativeCoeff = 1;
