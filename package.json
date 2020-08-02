@@ -15,6 +15,7 @@
     "release:mac": "electron-builder --mac",
     "release:linux": "electron-builder --linux --x64 --ia32",
     "dev": "node .electron-vue/dev-runner.js",
+    "start": "npm run dev",
     "pack": "npm run pack:main && npm run pack:renderer",
     "pack:main": "cross-env NODE_ENV=production webpack --progress --colors --config .electron-vue/webpack.main.config.js",
     "pack:renderer": "cross-env NODE_ENV=production webpack --progress --colors --config .electron-vue/webpack.renderer.config.js",

@@ -4,101 +4,123 @@ import Frame from 'canvas-to-buffer'
 import EventHandler from '../EventHandler.js'
 
 const QUALITY = {
-  width: 320,
-  height: 180
+  width: 64,
+  height: 36
 };
 
 class DesktopCapturer extends EventHandler {
 
   constructor () {
     super();
+  }
+
+  init () {
     this._video = document.createElement('video');
-    this._canvas = document.createElement('canvas');
+    this._canvas = new OffscreenCanvas(QUALITY.width, QUALITY.height);
     this._frame = new Frame(this._canvas, {
       image: {
         types: ['png']
       }
     });
-
-    (async () => {
-      this._stream = await this._captureDesktopVideo();
-      await this._projectStreamInVideoTag(this._stream);
-      this._eventHappened('ready');
-    })();
   }
 
-  _captureDesktopVideo () {
-    return new Promise((resolve, reject) => {
-      electronDesktopCapturer.getSources({ types: ['window', 'screen'] }).then(async sources => {
-        for (const source of sources) {
-          if (/^screen/.test(source.id)) {
-            try {
-              const stream = await navigator.mediaDevices.getUserMedia({
-                audio: false,
-                video: {
-                  mandatory: {
-                    chromeMediaSource: 'desktop',
-                    chromeMediaSourceId: source.id,
-                    minWidth: QUALITY.width,
-                    maxWidth: QUALITY.width,
-                    minHeight: QUALITY.height,
-                    maxHeight: QUALITY.height
-                  }
-                }
-              });
-              resolve(stream);
-            } catch (e) {
-              reject(e);
-            }
-            return
+  getCanvas () {
+    return this._canvas;
+  }
+
+  getMedias () {
+    return new Promise(async (resolve, reject) => {
+      let list = {};
+
+      let sources = await electronDesktopCapturer.getSources({ types: ['window', 'screen'] });
+      for (const source of sources) {
+        if (/^screen/.test(source.id)) {
+          list[source.id] = {
+            id: source.id,
+            name: source.name,
+            type: 'screen'
+          };
+        }
+      }
+
+      let devices = await navigator.mediaDevices.enumerateDevices()
+      devices.forEach(function(device) {
+        if (device.kind == 'videoinput') {
+          list[device.deviceId] = {
+            id: device.deviceId,
+            name: device.label,
+            type: 'device'
+          };
+        }
+      });
+      resolve(list);
+    });
+  }
+
+  async captureMedia (media) {
+    this._stream = await this._captureVideo(media);
+    await this._projectStreamInVideoTag(this._stream);
+    this._eventHappened('ready');
+  }
+
+  _captureVideo (media) {
+    return new Promise(async (resolve, reject) => {
+      let video;
+      if (media.type == 'screen') {
+        video = {
+          mandatory: {
+            chromeMediaSource: media.type == 'screen' ? 'desktop' : null,
+            chromeMediaSourceId: media.id,
+            minWidth: QUALITY.width,
+            maxWidth: QUALITY.width,
+            minHeight: QUALITY.height,
+            maxHeight: QUALITY.height
           }
         }
-        reject();
-      })
+      }
+      else {
+        video = {
+          deviceId: { exact: media.id },
+          width: QUALITY.width,
+          height: QUALITY.height
+        }
+      }
+      navigator.getUserMedia({
+        audio: false,
+        video: video
+      }, (stream) => {
+        resolve(stream);
+      }, () => {});
     });
   }
 
   _projectStreamInVideoTag (stream) {
     return new Promise((resolve, reject) => {
-
-      let streaming = false;
-      this._video.oncanplay = (ev) => {
-        if (!streaming) {
-          this._canvas.setAttribute('width', QUALITY.width);
-          this._canvas.setAttribute('height', QUALITY.height);
-          streaming = true;
-        }
-      };
-
       this._video.srcObject = stream;
 
       this._video.onloadedmetadata = (e) => {
         this._video.play();
         resolve();
-
-        // let colorDiv = document.createElement('div');
-        // colorDiv.style = "width: 50px; height: 50px;";
-        // document.getElementById('app').appendChild(colorDiv);
-        // setInterval(() => {
-        //   let t1 = new Date().getTime();
-        //   window.getDominantColor().then(dominant => {
-        //     let t2 = new Date().getTime();
-        //     colorDiv.innerHTML = Math.round(t2 - t1);
-        //     ipcRenderer.send('dominant-color', dominant);
-        //     colorDiv.style.backgroundColor = `rgb(${dominant.color[0]}, ${dominant.color[1]}, ${dominant.color[2]})`;
-        //   });
-        // }, 100);
-      }
+      };
     });
   }
 
   capture () {
-    if (this.didEventHappen('ready')) {
-      let ctx = this._canvas.getContext('2d');
-      ctx.drawImage(this._video, 0, 0, this._canvas.width, this._canvas.height);
-      return this._frame.toBuffer();
-    }
-    else throw 'Capturer not ready';
+    return (async () => {
+      if (this.didEventHappen('ready')) {
+        let ctx = this._canvas.getContext('2d');
+        ctx.drawImage(this._video, 0, 0, this._canvas.width, this._canvas.height);
+        let blob;
+        blob = await this._canvas.convertToBlob();
+        let arrayBuffer = blob.arrayBuffer();
+        return arrayBuffer;
+      }
+      else throw 'Capturer not ready';
+    })();
+  }
+
+  captureBitmap () {
+    return this._canvas.transferToImageBitmap();
   }
 }
 

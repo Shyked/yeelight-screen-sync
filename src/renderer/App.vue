@@ -1,13 +1,17 @@
 <template>
   <div id="window" @click="onClick">
+    <div class="background-image-container">
+      <canvas id="canvas0" ref="canvas0" class="background-image" :class="{ shown: canvasShown == 0 }"></canvas>
+      <canvas id="canvas1" ref="canvas1" class="background-image" :class="{ shown: canvasShown == 1 }"></canvas>
+    </div>
     <title-bar></title-bar>
     <div id="app">
       <main-interface :color="color" :lights="lights"></main-interface>
-      <!-- <div>{{ imagePing }}</div> -->
-      <!-- <div>{{ fps }}</div> -->
     </div>
     <div class="bottom-bar">
       <fps-selector @fps-changed="updateFps"></fps-selector>
+      <media-selector @media-changed="updateMedia" :medias="medias" class="media-selector"></media-selector>
+      <div id="lag">Lag: {{ meanLag }} ms</div>
       <div class="separator"></div>
       <button class="scan" @click="scan">
         Re-scan
@@ -23,6 +27,7 @@
   import TitleBar from '@/components/TitleBar'
   import Color from '@/components/Color'
   import FpsSelector from '@/components/FpsSelector'
+  import MediaSelector from '@/components/MediaSelector'
 
   import { ipcRenderer } from 'electron'
   import DesktopCapturer from './DesktopCapturer'
@@ -39,19 +44,30 @@
         imagePing: 0,
         previousRun: new Date().getTime(),
         lastRun: new Date().getTime(),
-        targetFps: 1
+        targetFps: 1,
+        medias: {},
+        lag: [],
+        lastPreviewExtraction: new Date().getTime(),
+        canvasShown: 0
       }
     },
     computed: {
       fps() {
         return (1000 / (this.lastRun - this.previousRun)).toFixed(2);
+      },
+      canvas() {
+        return this.desktopCapturer.getCanvas()
+      },
+      meanLag() {
+        return Math.trunc(this.lag.length == 0 ? 0 : this.lag.reduce((acc, curr) => (acc + curr), 0) / this.lag.length);
       }
     },
     components: {
       MainInterface,
       TitleBar,
       Color,
-      FpsSelector
+      FpsSelector,
+      MediaSelector
     },
     watch: {
       targetFps (value) {
@@ -59,7 +75,6 @@
       }
     },
     created() {
-
       ipcRenderer.on('update-light', (event, light) => {
         if (!light.id) light.id = light.host;
         if (!this.lights) {
@@ -76,6 +91,13 @@
           }
           else this.lights.push(light);
         }
+      });
+    },
+    mounted() {
+      this.desktopCapturer.init();
+
+      this.desktopCapturer.getMedias().then(medias => {
+        this.medias = medias;
       });
 
       this.desktopCapturer.when('ready', () => {
@@ -95,17 +117,30 @@
     },
     methods: {
 
-      getDominant(id) {
+      async getDominant(id) {
         if (id == window.runningDominant) {
-          let imageBuffer = this.desktopCapturer.capture();
           let t1 = new Date().getTime();
+          let imageBuffer = await this.desktopCapturer.capture();
           this.imageAnalyzer.analyze(imageBuffer).then(dominant => {
             ipcRenderer.send('dominant-color', dominant);
 
             this.color = `rgb(${dominant.color[0]}, ${dominant.color[1]}, ${dominant.color[2]})`;
 
+            let now = new Date().getTime();
+            if (now - this.lastPreviewExtraction > 4000) {
+              let nextCanvas = -this.canvasShown + 1;
+              let bitmap = this.desktopCapturer.captureBitmap();
+              let ctx = this.$refs['canvas' + nextCanvas].getContext('bitmaprenderer');
+              ctx.transferFromImageBitmap(bitmap);
+              this.lastPreviewExtraction = new Date().getTime();
+              this.canvasShown = nextCanvas;
+            }
+
             let t2 = new Date().getTime();
             let computeTime = t2 - t1;
+            this.lag.unshift(computeTime);
+            this.lag.splice(this.targetFps);
+            // console.log('full', computeTime);
 
             this.pingCheck();
             let timeout = 1000 / this.targetFps - computeTime;
@@ -143,6 +178,10 @@
         this.targetFps = fps;
       },
 
+      updateMedia(media) {
+        this.desktopCapturer.captureMedia(media);
+      },
+
       onClick(event) {
         this.$root.$emit('click', event);
       }
@@ -166,11 +205,22 @@
     font-family: 'Fira Sans', sans-serif;
   }
 
+  *::-webkit-scrollbar {
+    width: 8px;
+    background-color: #1b1b1b;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: #2d2d2d;
+  }
+
   #window {
+    position: relative;
     display: flex;
     flex-direction: column;
     width: 100%;
     height: 100%;
+    background-color: #222;
 
     > * {
       flex-shrink: 0;
@@ -181,11 +231,43 @@
     }
   }
 
+  .background-image-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.1;
+    filter: blur(10px);
+
+    .background-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 1;
+
+      &.shown {
+        z-index: 1;
+        animation: show-canvas .8s ease-in-out;
+      }
+
+      @keyframes show-canvas {
+        0% {
+          opacity: 0;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+    }
+  }
+
   #app {
     flex-grow: 1;
     position: relative;
     padding: 10px;
-    background-color: #222;
     overflow: auto;
   }
 
@@ -199,6 +281,23 @@
 
     .separator {
       flex-grow: 1;
+    }
+  }
+
+  #lag {
+    height: 100%;
+    width: 80px;
+    opacity: 0.6;
+    color: rgba(white, 0.8);
+    cursor: pointer;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    position: relative;
+
+    &:hover {
+      background-color: rgba(white, 0.03);
+      opacity: 1;
     }
   }
 

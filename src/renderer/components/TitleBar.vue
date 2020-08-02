@@ -48,7 +48,6 @@
     box-sizing: border-box;
     width: 100%;
     height: 30px;
-    background-color: #222;
     border: 1px #222 solid;
   }
 

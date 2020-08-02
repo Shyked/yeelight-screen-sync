@@ -225,18 +225,28 @@ class YeelightController extends EventHandler {
   }
 
   handleColor (dominant) {
+    let deltaToCurrentArray = null;
     let deltaToCurrent = null;
     if (this.currentDominant) {
-      deltaToCurrent =  Math.abs(dominant.color[0] - this.currentDominant.color[0])
-                        + Math.abs(dominant.color[1] - this.currentDominant.color[1])
-                        + Math.abs(dominant.color[2] - this.currentDominant.color[2])
-                        + Math.abs(dominant.light - this.currentDominant.light);
+      let hueDiff = Math.min(
+                      Math.abs(dominant.hsv[0] - this.currentDominant.hsv[0]),
+                      (Math.min(dominant.hsv[0], this.currentDominant.hsv[0]) + 360) - Math.max(dominant.hsv[0], this.currentDominant.hsv[0])
+                    );
+      deltaToCurrentArray = [
+        Math.abs(hueDiff / 180 * 100),
+        Math.abs(dominant.hsv[1] - this.currentDominant.hsv[1]),
+        Math.abs(dominant.hsv[2] - this.currentDominant.hsv[2]),
+        Math.abs(dominant.light - this.currentDominant.light)
+      ];
+      deltaToCurrent = deltaToCurrentArray.reduce((acc, curr) => acc + curr);
     }
 
     let currentTime = new Date().getTime();
     let elapsedTime = currentTime - this.lastUpdate;
 
-    if (dominant.delta + deltaToCurrent / 2 + elapsedTime / 150 > 100 || !this.currentDominant) {
+    if (dominant.delta + deltaToCurrent / 2 + elapsedTime * elapsedTime / 100000 > 60 || !this.currentDominant) {
+      console.log(deltaToCurrentArray);
+      console.log(elapsedTime * elapsedTime / 100000);
       let baseDelta = Math.sqrt(dominant.delta) * 150;
       let fpsRelativeCoeff = (-7 / (this.targetFps + 5)) + 1.3;
       if (fpsRelativeCoeff > 1) fpsRelativeCoeff = 1;
@@ -244,6 +254,8 @@ class YeelightController extends EventHandler {
 
       let duration = 1600 - baseDelta * fpsRelativeCoeff;
       if (duration < 100) duration = 100;
+
+      console.log('Changing light', dominant.color, duration);
       this.lights.forEach(light => {
         if (light.syncEnabled) {
 
