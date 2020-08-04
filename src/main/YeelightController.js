@@ -253,7 +253,6 @@ class YeelightController extends EventHandler {
       let duration = 1600 - baseDelta * fpsRelativeCoeff;
       if (duration < 100) duration = 100;
 
-      console.log('Changing light', dominant.color, duration);
       this.lights.forEach(light => {
         if (light.syncEnabled) {
 
