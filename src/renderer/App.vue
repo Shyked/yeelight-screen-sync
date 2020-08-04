@@ -127,7 +127,7 @@
             this.color = `rgb(${dominant.color[0]}, ${dominant.color[1]}, ${dominant.color[2]})`;
 
             let now = new Date().getTime();
-            if (now - this.lastPreviewExtraction > 4000) {
+            if (now - this.lastPreviewExtraction > 2000) {
               let nextCanvas = -this.canvasShown + 1;
               let bitmap = this.desktopCapturer.captureBitmap();
               let ctx = this.$refs['canvas' + nextCanvas].getContext('bitmaprenderer');
@@ -221,6 +221,7 @@
     width: 100%;
     height: 100%;
     background-color: #222;
+    overflow: hidden;
 
     > * {
       flex-shrink: 0;
@@ -238,7 +239,8 @@
     width: 100%;
     height: 100%;
     opacity: 0.1;
-    filter: blur(10px);
+    pointer-events: none;
+    transform: scale(1.1);
 
     .background-image {
       position: absolute;
@@ -247,10 +249,11 @@
       width: 100%;
       height: 100%;
       opacity: 1;
+      filter: blur(10px);
 
       &.shown {
         z-index: 1;
-        animation: show-canvas .8s ease-in-out;
+        animation: show-canvas 1s ease-in-out;
       }
 
       @keyframes show-canvas {
