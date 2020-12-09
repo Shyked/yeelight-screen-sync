@@ -1,8 +1,16 @@
 <template>
-  <div class="fps-dropdown" :class="{ active: dropdownActive }" ref="dropdown" @click="toggleDropdown">
-    <div class="fps-dropdown-selected">{{ selectedFps }} FPS</div>
-    <div class="fps-dropdown-list">
-      <div v-for="fps in fpsList" :key="fps" @click="selectFps(fps)">{{ fps }}</div>
+  <div class="brightness-dropdown" :class="{ active: dropdownActive }" ref="dropdown" @click="toggleDropdown">
+    <div class="brightness-dropdown-selected">
+      <span v-if="selectedBrightness === 1" class="icon fad fa-sun"></span>
+      <span v-if="selectedBrightness === 0.3" class="icon fad fa-candle-holder"></span>
+      <span v-if="selectedBrightness === 0.02" class="icon fad fa-moon"></span>
+    </div>
+    <div class="brightness-dropdown-list">
+      <div v-for="brightness in brightnessList" :key="brightness" @click="selectBrightness(brightness)">
+        <span v-if="brightness === 1" class="icon fad fa-sun"></span>
+        <span v-if="brightness === 0.3" class="icon fad fa-candle-holder"></span>
+        <span v-if="brightness === 0.02" class="icon fad fa-moon"></span>
+      </div>
     </div>
   </div>
 </template>
@@ -10,19 +18,19 @@
 <script>
 
   export default {
-    name: 'fps-selector',
+    name: 'brightness-selector',
     components: { },
     created() {
-      this.selectedFps = 10;
+      this.selectedBrightness = 1;
 
       this.$root.$on('click', event => {
-        if (this.dropdownActive && !event.target.closest('.fps-dropdown')) this.dropdownActive = false;
+        if (this.dropdownActive && !event.target.closest('.brightness-dropdown')) this.dropdownActive = false;
       });
     },
     data() {
       return {
-        fpsList: [1, 5, 10, 30, 60],
-        selectedFps: null,
+        brightnessList: [0.02, 0.3, 1],
+        selectedBrightness: null,
         dropdownActive: false
       }
     },
@@ -30,23 +38,23 @@
       
     },
     watch: {
-      selectedFps() {
-        this.$emit('fps-changed', this.selectedFps);
+      selectedBrightness() {
+        this.$emit('brightness-changed', this.selectedBrightness);
       }
     },
     methods: {
       toggleDropdown() {
         this.dropdownActive = !this.dropdownActive;
       },
-      selectFps(fps) {
-        this.selectedFps = fps;
+      selectBrightness(brightness) {
+        this.selectedBrightness = brightness;
       }
     }
   }
 </script>
 
 <style scoped lang="scss">
-  .fps-dropdown {
+  .brightness-dropdown {
     height: 100%;
     opacity: 0.6;
     background-image: none;
@@ -57,6 +65,7 @@
     display: flex;
     align-items: center;
     position: relative;
+    font-size: 16px;
 
     &:hover {
       background-color: rgba(white, 0.03);
@@ -68,7 +77,11 @@
       opacity: 1;
     }
 
-    .fps-dropdown-list {
+    .brightness-dropdown-selected {
+      font-size: 18px;
+    }
+
+    .brightness-dropdown-list {
       position: absolute;
       width: 100%;
       bottom: 100%;
@@ -80,7 +93,7 @@
       transition-duration: 300ms;
 
       > * {
-        height: 25px;
+        height: 35px;
         display: flex;
         align-items: center;
         background-color: #222;
@@ -95,7 +108,7 @@
       }
     }
 
-    &.active .fps-dropdown-list {
+    &.active .brightness-dropdown-list {
       opacity: 1;
       transform: scaleY(1) translateY(0);
       pointer-events: auto;

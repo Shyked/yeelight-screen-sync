@@ -12,6 +12,10 @@ import Log from 'electron-log'
 import MusicMode from './MusicMode'
 import EventHandler from '../EventHandler.js'
 
+const MAX_TRANSITION_DURATION = 1600;
+const TRANSITION_SPEED = 100;
+const LIGHT_CHANGE_SPACING = 45;
+
 class YeelightController extends EventHandler {
 
   constructor () {
@@ -27,6 +31,7 @@ class YeelightController extends EventHandler {
     this.server = null;
     this.port = null;
     this.targetFps = 10;
+    this.brightness = 1;
 
     this._startServer().then(() => {
       this.lookup();
@@ -224,34 +229,38 @@ class YeelightController extends EventHandler {
     this.targetFps = fps;
   }
 
+  setBrightness (brightness) {
+    this.brightness = brightness;
+  }
+
   handleColor (dominant) {
-    let deltaToCurrentArray = null;
-    let deltaToCurrent = null;
+    let deltaLightToScreenArray = null;
+    let deltaLightToScreen = null;
     if (this.currentDominant) {
       let hueDiff = Math.min(
                       Math.abs(dominant.hsv[0] - this.currentDominant.hsv[0]),
                       (Math.min(dominant.hsv[0], this.currentDominant.hsv[0]) + 360) - Math.max(dominant.hsv[0], this.currentDominant.hsv[0])
                     );
-      deltaToCurrentArray = [
+      deltaLightToScreenArray = [
         Math.abs(hueDiff / 180 * 100),
         Math.abs(dominant.hsv[1] - this.currentDominant.hsv[1]),
         Math.abs(dominant.hsv[2] - this.currentDominant.hsv[2]),
         Math.abs(dominant.light - this.currentDominant.light)
       ];
-      deltaToCurrent = deltaToCurrentArray.reduce((acc, curr) => acc + curr);
+      deltaLightToScreen = deltaLightToScreenArray.reduce((acc, curr) => acc + curr);
     }
 
     let currentTime = new Date().getTime();
     let elapsedTime = currentTime - this.lastUpdate;
 
-    if (dominant.delta + deltaToCurrent / 2 + elapsedTime * elapsedTime / 100000 > 60 || !this.currentDominant) {
-      let baseDelta = Math.sqrt(dominant.delta) * 150;
-      let fpsRelativeCoeff = (-7 / (this.targetFps + 5)) + 1.3;
+    if (deltaLightToScreen + elapsedTime * elapsedTime / 100000 > LIGHT_CHANGE_SPACING || !this.currentDominant) {
+      let baseDelta = Math.sqrt(dominant.delta + deltaLightToScreen) * TRANSITION_SPEED;
+      let fpsRelativeCoeff = 1 - (1 / (this.targetFps));
       if (fpsRelativeCoeff > 1) fpsRelativeCoeff = 1;
-      else if (fpsRelativeCoeff < 0) fpsRelativeCoeff = 0;
+      else if (fpsRelativeCoeff < 0.2) fpsRelativeCoeff = 0.2;
 
-      let duration = 1600 - baseDelta * fpsRelativeCoeff;
-      if (duration < 100) duration = 100;
+      let duration = MAX_TRANSITION_DURATION - baseDelta * fpsRelativeCoeff;
+      if (duration < 100) duration = 0;
 
       this.lights.forEach(light => {
         if (light.syncEnabled) {
@@ -277,8 +286,9 @@ class YeelightController extends EventHandler {
             }
             else {
               if (light.musicMode) {
+                console.log(dominant.color);
                 light.musicMode.setRGB(dominant.color, duration);
-                light.musicMode.setBright(dominant.light, duration);
+                light.musicMode.setBright(dominant.light * this.brightness, duration);
               }
             }
           }

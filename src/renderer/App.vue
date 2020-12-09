@@ -10,6 +10,7 @@
     </div>
     <div class="bottom-bar">
       <fps-selector @fps-changed="updateFps"></fps-selector>
+      <brightness-selector @brightness-changed="updateBrightness"></brightness-selector>
       <media-selector @media-changed="updateMedia" :medias="medias" class="media-selector"></media-selector>
       <div id="lag">Lag: {{ meanLag }} ms</div>
       <div class="separator"></div>
@@ -27,6 +28,7 @@
   import TitleBar from '@/components/TitleBar'
   import Color from '@/components/Color'
   import FpsSelector from '@/components/FpsSelector'
+  import BrightnessSelector from '@/components/BrightnessSelector'
   import MediaSelector from '@/components/MediaSelector'
 
   import { ipcRenderer } from 'electron'
@@ -45,6 +47,7 @@
         previousRun: new Date().getTime(),
         lastRun: new Date().getTime(),
         targetFps: 1,
+        brightness: 1,
         medias: {},
         lag: [],
         lastPreviewExtraction: new Date().getTime(),
@@ -67,11 +70,15 @@
       TitleBar,
       Color,
       FpsSelector,
+      BrightnessSelector,
       MediaSelector
     },
     watch: {
       targetFps (value) {
         ipcRenderer.send('fps-changed', value);
+      },
+      brightness (value) {
+        ipcRenderer.send('brightness-changed', value);
       }
     },
     created() {
@@ -176,6 +183,10 @@
 
       updateFps(fps) {
         this.targetFps = fps;
+      },
+
+      updateBrightness(brightness) {
+        this.brightness = brightness;
       },
 
       updateMedia(media) {

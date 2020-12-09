@@ -93,6 +93,10 @@ ipcMain.on('vue-ready', () => {
       yeelightController.setTargetFps(fps);
     });
 
+    ipcMain.on('brightness-changed', (event, brightness) => {
+      yeelightController.setBrightness(brightness);
+    });
+
     let proxys = [
       'update-light'
     ];
