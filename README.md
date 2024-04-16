@@ -1,5 +1,7 @@
 # Yeelight Screen Sync
 
+![App screenshot](https://shyked.fr/img/rea/35.png)
+
 This project is meant to synchronize your Yeelight with the colors displayed on your screen.
 
 It is built with Electron Vue, and thus divided in two parts:
